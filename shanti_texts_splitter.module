@@ -254,7 +254,7 @@ function _shanti_texts_splitter_node_expand($node) {
     $child_node->title = $title ? $title : t('Page !pageno', array('!pageno' => $pageno));
 
     // Create the child's body.
-    $child_node->body[$lang][0]['value'] = $body;
+    $child_node->field_book_content[$lang][0]['value'] = $body;
 
     // Create the child's weight.
     if ($level > $prev_level || !isset($weight[$level])) {
