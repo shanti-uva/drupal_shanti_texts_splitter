@@ -3,6 +3,9 @@
 // Global array to hold the pages.
 $shanti_texts_splitter_pages = array();
 
+/**
+ * Implements hook_menu(). 
+ */ 
 function shanti_texts_splitter_menu() {
   return array(
     'admin/config/content/shanti_texts_splitter' => array(
@@ -12,17 +15,13 @@ function shanti_texts_splitter_menu() {
       'page arguments'    => array('shanti_texts_splitter_admin'),
       'access arguments'  => array('administer shanti_texts_splitter'),
       'type'              => MENU_NORMAL_ITEM,      
-    )
-}
-
-function shanti_texts_splitter_permission() {
-  return array(
-    'administer shanti_texts_splitter' => array(
-      'title' => t('Administer SHANTI Texts Splitter'),
     ),
   );
 }
 
+/**
+ * Function called by menu item in hook_menu(). 
+ */ 
 function shanti_texts_splitter_admin() {
   $form['shanti_texts_splitter_content_field'] = array(
     '#type'           => 'textfield',
@@ -30,19 +29,22 @@ function shanti_texts_splitter_admin() {
     '#default_value'  => variable_get('shanti_texts_splitter_content_field', 'body'),
     '#size'           => 60,
     '#maxlength'      => 255,
-    '#description'    => t('The field in the texts content type to split by header.'),
-    '#required'       => TRUE,
+    '#description'    => t('The field in the texts content type to split by header. Default it <b>body</b>.'),
+    '#required'       => TRUE,  
   );
   $form['shanti_texts_splitter_default_state'] = array(
     '#type'           => 'checkbox',
-    '#title'          => t("Do you want to enable splitter by default?"),
-    '#description'    => t("If yes, you can disable it for a given text."),
+    '#title'          => t("Do you want to enable the splitter by default?"),
+    '#description'    => t("If yes, you can disable it for a given text at edit time."),
     '#default_value'  => variable_get('shanti_texts_splitter_default_state', 0),
     '#options'        => array(0 => 'no', 1 => 'yes'),
   );
   return system_settings_form($form);  
 }
 
+/**
+ * Implements hook_CALLBACK_validate(). 
+ */ 
 function shanti_texts_splitter_admin_validate($form, &$form_state) {
   # Do some test to make sure field actually exists
   $field_name = $form_state['values']['shanti_texts_splitter_content_field'];
@@ -105,16 +107,20 @@ Node 1 Weight: -15
     Node 5 Weight: -14
     </pre>
 ');
-      return $output;
-      break;
+    return $output;
+    break;
   }
 }
 
 /**
- * Implements hook_permission().
- */
+ * Implements hook_permission(). 
+ */ 
 function shanti_texts_splitter_permission() {
   return array(
+    'administer shanti_texts_splitter' => array(
+      'title' => t('Administer SHANTI Texts Splitter'),
+      'description' => t('Define field for SHANTI Texts Splitter.'),
+    ),
     'use shanti_texts_splitter' => array(
       'title' => t('Use SHANTI Texts Splitter'),
       'description' => t('Create multi-section SHANTI texts based upon HTML markup.'),
@@ -181,7 +187,6 @@ function shanti_texts_splitter_node_presave($node) {
   }
 }
 
-
 /**
  * Implements hook_node_insert().
  */
@@ -191,14 +196,12 @@ function shanti_texts_splitter_node_insert($node) {
   }
 }
 
-
 /**
  * Implements hook_node_update().
  */
 function shanti_texts_splitter_node_update($node) {
   _shanti_texts_splitter_node_expand($node);
 }
-
 
 /**
  * Split node into an page array.
