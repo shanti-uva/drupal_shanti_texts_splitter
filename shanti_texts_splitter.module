@@ -3,6 +3,57 @@
 // Global array to hold the pages.
 $shanti_texts_splitter_pages = array();
 
+function shanti_texts_splitter_menu() {
+  return array(
+    'admin/config/content/shanti_texts_splitter' => array(
+      'title'             => 'SHANTI Texts Splitter Configuration',
+      'description'       => 'Provide settings for SHANTI Texts Splitter.',
+      'page callback'     => 'drupal_get_form',
+      'page arguments'    => array('shanti_texts_splitter_admin'),
+      'access arguments'  => array('administer shanti_texts_splitter'),
+      'type'              => MENU_NORMAL_ITEM,      
+    )
+}
+
+function shanti_texts_splitter_permission() {
+  return array(
+    'administer shanti_texts_splitter' => array(
+      'title' => t('Administer SHANTI Texts Splitter'),
+    ),
+  );
+}
+
+function shanti_texts_splitter_admin() {
+  $form['shanti_texts_splitter_content_field'] = array(
+    '#type'           => 'textfield',
+    '#title'          => t('Texts Content Field'),
+    '#default_value'  => variable_get('shanti_texts_splitter_content_field', 'body'),
+    '#size'           => 60,
+    '#maxlength'      => 255,
+    '#description'    => t('The field in the texts content type to split by header.'),
+    '#required'       => TRUE,
+  );
+  $form['shanti_texts_splitter_default_state'] = array(
+    '#type'           => 'checkbox',
+    '#title'          => t("Do you want to enable splitter by default?"),
+    '#description'    => t("If yes, you can disable it for a given text."),
+    '#default_value'  => variable_get('shanti_texts_splitter_default_state', 0),
+    '#options'        => array(0 => 'no', 1 => 'yes'),
+  );
+  return system_settings_form($form);  
+}
+
+function shanti_texts_splitter_admin_validate($form, &$form_state) {
+  # Do some test to make sure field actually exists
+  $field_name = $form_state['values']['shanti_texts_splitter_content_field'];
+  $test = field_info_field($field_name);
+  if (is_null($test)) {
+    form_set_error('shanti_texts_splitter_content_field', 
+      t("Looks like <b><tt>$field_name</tt></b> is not a valid field.")
+    );
+  }
+}
+
 /**
  * Implementation of hook_help().
  */
@@ -86,7 +137,7 @@ function shanti_texts_splitter_form_alter(&$form, $form_state, $form_id) {
       '#type' => 'radios',
       '#title' => t('Heading treatment'),
       '#description' => t('Should this text be !help at each HTML heading?', array('!help' => l(t('split into new SHANTI Text sections'), 'admin/help/shanti_texts_splitter'))),
-      '#default_value' => 0,
+      '#default_value' => variable_get('shanti_texts_splitter_default_state',0),
       '#options' => array(
         0 => t('Do not split SHANTI Text into sections.'),
         1 => t('Create a new SHANTI Text section at each HTML heading.'),
@@ -114,26 +165,18 @@ function shanti_texts_splitter_form_alter(&$form, $form_state, $form_id) {
  * Implements hook_node_presave().
  */
 function shanti_texts_splitter_node_presave($node) {
-   global $shanti_texts_splitter_pages;
-
-   if (!empty($shanti_texts_splitter_pages)) {
-     return;
-   }
-
+  global $shanti_texts_splitter_pages;
+  if (!empty($shanti_texts_splitter_pages)) {
+    return;
+  }
   if ($node->type == 'book' && !empty($node->shanti_texts_splitter) && user_access('use shanti_texts_splitter')) {
     _shanti_texts_splitter_split($node);
-
-    // Check if root page is already part of a book.
-    // Create a new book if it is not.
     if ($node->book['bid'] == 0) {
-      //$node->book['bid'] = $node->nid;
       $node->book = array(
         'bid' =>'new', // use 'new' to create new top level book
         'plid' => 0,   // this is the top level
       );
     }
-
-    // Set a parent nid for this level that can be used by later children.
     $node->parent = $node->nid;
   }
 }
@@ -162,12 +205,13 @@ function shanti_texts_splitter_node_update($node) {
  */
 function _shanti_texts_splitter_split($node) {
   global $shanti_texts_splitter_pages;
+  $shanti_texts_splitter_content_field = variable_get('shanti_texts_splitter_content_field');
 
   $lang = $node->language;
-  if (!isset($node->field_book_content[$lang])) {
-    $lang =  LANGUAGE_NONE;
+  if (!isset($node->{$shanti_texts_splitter_content_field}[$lang])) { 
+    $lang =  LANGUAGE_NONE; 
   }
-  $body = $node->field_book_content[$lang][0]['value'];
+  $body = $node->{$shanti_texts_splitter_content_field}[$lang][0]['value'];
 
   // Break up the body into separate pages wherever there is a heading
   // flagged as a splitter.
@@ -198,7 +242,7 @@ function _shanti_texts_splitter_split($node) {
   }
 
   // Array $shanti_texts_splitter_pages holds all our pages.
-  $node->field_book_content[$lang][0]['value'] = $shanti_texts_splitter_pages[0]['cntnt'];
+  $node->{$shanti_texts_splitter_content_field}[$lang][0]['value'] = $shanti_texts_splitter_pages[0]['cntnt'];
   array_shift($shanti_texts_splitter_pages);
 }
 
@@ -207,87 +251,82 @@ function _shanti_texts_splitter_split($node) {
  */
 function _shanti_texts_splitter_node_expand($node) {
   global $shanti_texts_splitter_pages;
+  $shanti_texts_splitter_content_field = variable_get('shanti_texts_splitter_content_field');
 
   if (!isset($node->book)) {
     return;
   }
 
   $lang = $node->language;
-  if (!isset($node->field_book_content[$lang])) {
+  if (!isset($node->{$shanti_texts_splitter_content_field}[$lang])) {
     $lang =  LANGUAGE_NONE;
   }
 
   // Set the three arrays that keeps track at each level.
-  $parent = array(
-    0 => $node->nid
-  );
-  $bookml = array(
-    0 => $node->book['mlid'],
-  );
-  $weight = array(
-    0 => -15,
-  );
-
+  $parent     = array(0 => $node->nid);
+  $bookml     = array(0 => $node->book['mlid']);
+  $weight     = array(0 => -15);
   $prev_level = 0;
-  $pageno = 1;
+  $pageno     = 1;
 
-  // This loop may take some time since new nodes are created.
-  // @TODO It would be better to make this into a batch script,
-  // but the processing is all intertwined, so it's hard to see how to do it.
-  $original_time = ini_get('max_execution_time');
+  $original_time = ini_get('max_execution_time'); // May take a while, so ...
 
-  foreach ($shanti_texts_splitter_pages as $page) {
-    $level = $page['level'];
-    $label = $page['label'];
+  if (isset($shanti_texts_splitter_pages)) {
+    foreach ($shanti_texts_splitter_pages as $page) {
+      $level = $page['level'];
+      $label = $page['label'];
 
-    $nodecntnt = '<h'. $level . '>' . $page['cntnt'];
-    $split = explode('</h'. $level .'>', $nodecntnt);
-    $title = trim(str_replace('&nbsp;', ' ', strip_tags($split[0])));
-    $body = trim($split[1]);
+      $nodecntnt = '<h'. $level . '>' . $page['cntnt'];
+      $split = explode('</h'. $level .'>', $nodecntnt);
+      $title = trim(str_replace('&nbsp;', ' ', strip_tags($split[0])));
+      $body = trim($split[1]);
 
-    // After the first time through, clone the parent as a starting point for child nodes.
-    $child_node = clone($node);
-    // Set the child nid and vid to zero so new nodes are created.
-    $child_node->nid = 0;
-    $child_node->vid = 0;
-    // Make sure the title is never an empty string.
-    $child_node->title = $title ? $title : t('Page !pageno', array('!pageno' => $pageno));
+      // After the first time through, clone the parent as a starting point for child nodes.
+      $child_node = clone($node);
 
-    // Create the child's body.
-    $child_node->body[$lang][0]['value'] = $body;
+      // Set the child nid and vid to zero so new nodes are created.
+      $child_node->nid = 0;
+      $child_node->vid = 0;
 
-    // Create the child's weight.
-    if ($level > $prev_level || !isset($weight[$level])) {
-      $weight[$level] = -15;
-    }
-    else {
-      // There might be too many pages to increase this forever.
-      // Don't overrun the book module max weight.
-      if ($weight[$level] <= 15) $weight[$level]++;
-    }
-    $child_node->book['weight'] = $weight[$level];
+      // Make sure the title is never an empty string.
+      $child_node->title = $title ? $title : t('Section !pageno', array('!pageno' => $pageno));
 
-    // Find the parent id for this node using the value stored for the
-    // next higher level.
-    $parent_level = intval($level - 1);
-    $child_node->parent = $parent[$parent_level] ? $parent[$parent_level] : $node->nid;
+      // Create the child's body.
+      $child_node->field_book_content[$lang][0]['value'] = $body;
 
-    $child_node->book['bid']  = $parent[0];
-    $child_node->book['plid'] = $bookml[$parent_level];
+      // Create the child's weight.
+      if ($level > $prev_level || !isset($weight[$level])) {
+        $weight[$level] = -15;
+      }
+      else {
+        // There might be too many pages to increase this forever.
+        // Don't overrun the book module max weight.
+        if ($weight[$level] <= 15) $weight[$level]++;
+      }
+      $child_node->book['weight'] = $weight[$level];
 
-    // Make sure shanti_texts_splitter is not run again on the child nodes.
-    $child_node->shanti_texts_splitter = 0;
-    $child_node->is_new = TRUE;
-    node_save($child_node);
+      // Find the parent id for this node using the value stored for the
+      // next higher level.
+      $parent_level = intval($level - 1);
+      $child_node->parent = $parent[$parent_level] ? $parent[$parent_level] : $node->nid;
 
-    // Set a parent nid and bookml mlid for this level that can be
-    // used by later children.
-    $parent[$level] = $child_node->nid;
-    $bookml[$level] = $child_node->book['mlid'];
+      $child_node->book['bid']  = $parent[0];
+      $child_node->book['plid'] = $bookml[$parent_level];
 
-    $prev_level = $level;
-    $pageno++;
-  } // foreach page
+      // Make sure shanti_texts_splitter is not run again on the child nodes.
+      $child_node->shanti_texts_splitter = 0;
+      $child_node->is_new = TRUE;
+      node_save($child_node);
+
+      // Set a parent nid and bookml mlid for this level that can be
+      // used by later children.
+      $parent[$level] = $child_node->nid;
+      $bookml[$level] = $child_node->book['mlid'];
+
+      $prev_level = $level;
+      $pageno++;
+    } // foreach page
+  }// if 
 
   // Reset max_execution_time
   ini_set('max_execution_time', $original_time);
