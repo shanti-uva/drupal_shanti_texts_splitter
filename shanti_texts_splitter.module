@@ -270,47 +270,7 @@ function _shanti_texts_splitter_node_expand($node) {
   $bookml     = array(0 => $node->book['mlid']);
   $weight     = array(0 => -15);
   $prev_level = 0;
-<<<<<<< HEAD
-  $pageno = 1;
-
-  // This loop may take some time since new nodes are created.
-  // @TODO It would be better to make this into a batch script,
-  // but the processing is all intertwined, so it's hard to see how to do it.
-  $original_time = ini_get('max_execution_time');
-
-  foreach ($shanti_texts_splitter_pages as $page) {
-    $level = $page['level'];
-    $label = $page['label'];
-
-    $nodecntnt = '<h'. $level . '>' . $page['cntnt'];
-    $split = explode('</h'. $level .'>', $nodecntnt);
-    $title = trim(str_replace('&nbsp;', ' ', strip_tags($split[0])));
-    $body = trim($split[1]);
-
-    // After the first time through, clone the parent as a starting point for child nodes.
-    $child_node = clone($node);
-    // Set the child nid and vid to zero so new nodes are created.
-    $child_node->nid = 0;
-    $child_node->vid = 0;
-    // Make sure the title is never an empty string.
-    $child_node->title = $title ? $title : t('Page !pageno', array('!pageno' => $pageno));
-
-    // Create the child's body.
-    $child_node->field_book_content[$lang][0]['value'] = $body;
-
-    // Create the child's weight.
-    if ($level > $prev_level || !isset($weight[$level])) {
-      $weight[$level] = -15;
-    }
-    else {
-      // There might be too many pages to increase this forever.
-      // Don't overrun the book module max weight.
-      if ($weight[$level] <= 15) $weight[$level]++;
-    }
-    $child_node->book['weight'] = $weight[$level];
-=======
   $pageno     = 1;
->>>>>>> master
 
   $original_time = ini_get('max_execution_time'); // May take a while, so ...
 
