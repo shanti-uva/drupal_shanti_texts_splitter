@@ -45,7 +45,7 @@ function shanti_texts_splitter_admin() {
 /**
  * Implements hook_CALLBACK_validate(). 
  */ 
-function shanti_texts_splitter_admin_validate($form, &$form_state) {
+function shanti_texts_splitter_admin_validate($form, &$form_state) {  
   # Do some test to make sure field actually exists
   $field_name = $form_state['values']['shanti_texts_splitter_content_field'];
   $test = field_info_field($field_name);
@@ -132,6 +132,7 @@ function shanti_texts_splitter_permission() {
  * Implements hook_form_alter().
  */
 function shanti_texts_splitter_form_alter(&$form, $form_state, $form_id) {
+  
   if ($form_id == 'book_node_form' && user_access('use shanti_texts_splitter')) {
     $form['shanti_texts_splitter_group'] = array(
       '#type' => 'fieldset',
@@ -170,7 +171,7 @@ function shanti_texts_splitter_form_alter(&$form, $form_state, $form_id) {
 /**
  * Implements hook_node_presave().
  */
-function shanti_texts_splitter_node_presave($node) {
+function shanti_texts_splitter_node_presave($node) {  
   global $shanti_texts_splitter_pages;
   if (!empty($shanti_texts_splitter_pages)) {
     return;
@@ -253,6 +254,7 @@ function _shanti_texts_splitter_split($node) {
  * Expand array $shanti_texts_splitter_pages into nodes
  */
 function _shanti_texts_splitter_node_expand($node) {
+  
   global $shanti_texts_splitter_pages;
   $shanti_texts_splitter_content_field = variable_get('shanti_texts_splitter_content_field');
 
@@ -276,6 +278,7 @@ function _shanti_texts_splitter_node_expand($node) {
 
   if (isset($shanti_texts_splitter_pages)) {
     foreach ($shanti_texts_splitter_pages as $page) {
+      
       $level = $page['level'];
       $label = $page['label'];
 
@@ -295,7 +298,7 @@ function _shanti_texts_splitter_node_expand($node) {
       $child_node->title = $title ? $title : t('Section !pageno', array('!pageno' => $pageno));
 
       // Create the child's body.
-      $child_node->field_book_content[$lang][0]['value'] = $body;
+      $child_node->{$shanti_texts_splitter_content_field}[$lang][0]['value'] = $body;
 
       // Create the child's weight.
       if ($level > $prev_level || !isset($weight[$level])) {
