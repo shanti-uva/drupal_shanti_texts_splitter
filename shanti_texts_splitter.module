@@ -171,173 +171,199 @@ function shanti_texts_splitter_form_alter(&$form, $form_state, $form_id) {
 /**
  * Implements hook_node_presave().
  */
-function shanti_texts_splitter_node_presave($node) {  
-  global $shanti_texts_splitter_pages;
-  if (!empty($shanti_texts_splitter_pages)) {
-    return;
-  }
-  if ($node->type == 'book' && !empty($node->shanti_texts_splitter) && user_access('use shanti_texts_splitter')) {
-    _shanti_texts_splitter_split($node);
-    if ($node->book['bid'] == 0) {
-      $node->book = array(
-        'bid' =>'new', // use 'new' to create new top level book
-        'plid' => 0,   // this is the top level
-      );
-    }
-    $node->parent = $node->nid;
-  }
+function shanti_texts_splitter_node_presave($node) 
+{	
+	global $shanti_texts_splitter_pages;
+	
+	if (!empty($shanti_texts_splitter_pages)) 
+	{
+    	return;
+  	}
+	
+	if ($node->type == 'book' && !empty($node->shanti_texts_splitter) && user_access('use shanti_texts_splitter')) 
+	{
+    	_shanti_texts_splitter_split($node);
+    	if ($node->book['bid'] == 0) 
+    	{
+      		$node->book = array(
+        		'bid' =>'new', // use 'new' to create new top level book
+        		'plid' => 0,   // this is the top level
+      		);
+    	}
+    	$node->parent = $node->nid;
+  	}
 }
 
 /**
  * Implements hook_node_insert().
  */
-function shanti_texts_splitter_node_insert($node) {
-  if (!empty($node->shanti_texts_splitter)) {
-   _shanti_texts_splitter_node_expand($node);
-  }
+function shanti_texts_splitter_node_insert($node) 
+{
+	if (!empty($node->shanti_texts_splitter)) 
+	{
+		_shanti_texts_splitter_node_expand($node);
+  	}
 }
 
 /**
  * Implements hook_node_update().
  */
-function shanti_texts_splitter_node_update($node) {
-  _shanti_texts_splitter_node_expand($node);
+function shanti_texts_splitter_node_update($node) 
+{
+	_shanti_texts_splitter_node_expand($node);
 }
 
 /**
  * Split node into an page array.
  */
-function _shanti_texts_splitter_split($node) {
-  global $shanti_texts_splitter_pages;
-  $shanti_texts_splitter_content_field = variable_get('shanti_texts_splitter_content_field');
+function _shanti_texts_splitter_split($node) 
+{
+	global $shanti_texts_splitter_pages;
+	
+	$shanti_texts_splitter_content_field = variable_get('shanti_texts_splitter_content_field');
 
-  $lang = $node->language;
-  if (!isset($node->{$shanti_texts_splitter_content_field}[$lang])) { 
-    $lang =  LANGUAGE_NONE; 
-  }
-  $body = $node->{$shanti_texts_splitter_content_field}[$lang][0]['value'];
+	$lang = $node->language;
+  	if (!isset($node->{$shanti_texts_splitter_content_field}[$lang])) 
+  	{ 
+    	$lang =  LANGUAGE_NONE; 
+  	}
+  	$body = $node->{$shanti_texts_splitter_content_field}[$lang][0]['value'];
 
-  // Break up the body into separate pages wherever there is a heading
-  // flagged as a splitter.
-  $splitters = array_filter(array_values($node->splitters));
-  $items = preg_split('/<h(['. implode('|', $splitters) .'].*)>/U', $body, -1, PREG_SPLIT_DELIM_CAPTURE);
-  $ii = $level = 0;
-  $label = '';
-  $istag = FALSE;
+  	// Break up the body into separate pages wherever there is a heading
+	// flagged as a splitter.
+	$splitters = array_filter(array_values($node->splitters));
+	$items = preg_split('/<h(['. implode('|', $splitters) .'].*)>/U', $body, -1, PREG_SPLIT_DELIM_CAPTURE);
+	$ii = $level = 0;
+	$label = '';
+	$istag = FALSE;
 
-  foreach ($items as $item) {
-    if ($istag) {
-      $label = '';
-      $headele = preg_split('/ /', $item);
-      if (isset($headele[1])) {
-        if (preg_match('/id=\"(.*)\"/', $headele[1], $matches)) {
-          $label = $matches[1];
-        }
-      }
-      $level = $headele[0];
-    }
-    else {
-      $shanti_texts_splitter_pages[$ii]['level'] = $level;
-      $shanti_texts_splitter_pages[$ii]['label'] = $label;
-      $shanti_texts_splitter_pages[$ii]['cntnt'] = $item;
-      $ii++;
-    }
-    $istag = !$istag;
-  }
+	foreach ($items as $item) 
+	{
+    	if ($istag) 
+    	{
+      		$label = '';
+  			$headele = preg_split('/ /', $item);
+  			if (isset($headele[1])) 
+  			{
+    			if (preg_match('/id=\"(.*)\"/', $headele[1], $matches)) 
+    			{
+      				$label = $matches[1];
+    			}
+  			}
+  			$level = $headele[0];
+		}
+		else 
+		{
+			$shanti_texts_splitter_pages[$ii]['level'] = $level;
+			$shanti_texts_splitter_pages[$ii]['label'] = $label;
+			$shanti_texts_splitter_pages[$ii]['cntnt'] = $item;
+			$ii++;
+    	}
+    	$istag = !$istag;
+	}
 
-  // Array $shanti_texts_splitter_pages holds all our pages.
-  $node->{$shanti_texts_splitter_content_field}[$lang][0]['value'] = $shanti_texts_splitter_pages[0]['cntnt'];
-  array_shift($shanti_texts_splitter_pages);
+	// Array $shanti_texts_splitter_pages holds all our pages.
+	$node->{$shanti_texts_splitter_content_field}[$lang][0]['value'] = $shanti_texts_splitter_pages[0]['cntnt'];
+	array_shift($shanti_texts_splitter_pages);
 }
 
 /**
  * Expand array $shanti_texts_splitter_pages into nodes
  */
-function _shanti_texts_splitter_node_expand($node) {
+function _shanti_texts_splitter_node_expand($node) 
+{
   
-  global $shanti_texts_splitter_pages;
-  $shanti_texts_splitter_content_field = variable_get('shanti_texts_splitter_content_field');
+	global $shanti_texts_splitter_pages;
+  
+	$shanti_texts_splitter_content_field = variable_get('shanti_texts_splitter_content_field');
 
-  if (!isset($node->book)) {
-    return;
-  }
+	if (!isset($node->book)) 
+	{
+    	return;
+  	}
 
-  $lang = $node->language;
-  if (!isset($node->{$shanti_texts_splitter_content_field}[$lang])) {
-    $lang =  LANGUAGE_NONE;
-  }
+  	$lang = $node->language;
+  	if (!isset($node->{$shanti_texts_splitter_content_field}[$lang])) 
+  	{
+    	$lang =  LANGUAGE_NONE;
+  	}
 
-  // Set the three arrays that keeps track at each level.
-  $parent     = array(0 => $node->nid);
-  $bookml     = array(0 => $node->book['mlid']);
-  $weight     = array(0 => -15);
-  $prev_level = 0;
-  $pageno     = 1;
+	// Set the three arrays that keeps track at each level.
+	$parent     = array(0 => $node->nid);
+	$bookml     = array(0 => $node->book['mlid']);
+	$weight     = array(0 => -15);
+	$prev_level = 0;
+	$pageno     = 1;
 
-  $original_time = ini_get('max_execution_time'); // May take a while, so ...
+	$original_time = ini_get('max_execution_time'); // May take a while, so ...
 
-  if (isset($shanti_texts_splitter_pages)) {
-    foreach ($shanti_texts_splitter_pages as $page) {
-      
-      $level = $page['level'];
-      $label = $page['label'];
+	if (isset($shanti_texts_splitter_pages)) 
+	{
+    	foreach ($shanti_texts_splitter_pages as $page) 
+    	{
+    		$level = $page['level'];
+    		$label = $page['label'];
+      		$nodecntnt = '<h'. $level . '>' . $page['cntnt'];
+      		$split = explode('</h'. $level .'>', $nodecntnt);
+      		$title = trim(str_replace('&nbsp;', ' ', strip_tags($split[0])));
+      		$body = trim($split[1]);
 
-      $nodecntnt = '<h'. $level . '>' . $page['cntnt'];
-      $split = explode('</h'. $level .'>', $nodecntnt);
-      $title = trim(str_replace('&nbsp;', ' ', strip_tags($split[0])));
-      $body = trim($split[1]);
+      		// After the first time through, clone the parent as a starting point for child nodes.
+      		$child_node = clone($node);
 
-      // After the first time through, clone the parent as a starting point for child nodes.
-      $child_node = clone($node);
+      		// Set the child nid and vid to zero so new nodes are created.
+      		$child_node->nid = 0;
+      		$child_node->vid = 0;
 
-      // Set the child nid and vid to zero so new nodes are created.
-      $child_node->nid = 0;
-      $child_node->vid = 0;
+      		// Make sure the title is never an empty string.
+      		$child_node->title = $title ? $title : t('Section !pageno', array('!pageno' => $pageno));
 
-      // Make sure the title is never an empty string.
-      $child_node->title = $title ? $title : t('Section !pageno', array('!pageno' => $pageno));
+      		// Create the child's body.
+      		$child_node->{$shanti_texts_splitter_content_field}[$lang][0]['value'] = $body;
 
-      // Create the child's body.
-      $child_node->{$shanti_texts_splitter_content_field}[$lang][0]['value'] = $body;
+      		// Create the child's weight.
+      		if ($level > $prev_level || !isset($weight[$level])) 
+      		{
+        		$weight[$level] = -15;
+      		}
+      		else 
+      		{
+        		// There might be too many pages to increase this forever.
+        		// Don't overrun the book module max weight.
+        		if ($weight[$level] <= 15) $weight[$level]++;
+      		}
+      		$child_node->book['weight'] = $weight[$level];
 
-      // Create the child's weight.
-      if ($level > $prev_level || !isset($weight[$level])) {
-        $weight[$level] = -15;
-      }
-      else {
-        // There might be too many pages to increase this forever.
-        // Don't overrun the book module max weight.
-        if ($weight[$level] <= 15) $weight[$level]++;
-      }
-      $child_node->book['weight'] = $weight[$level];
+      		// Find the parent id for this node using the value stored for the
+      		// next higher level.
+      		$parent_level = intval($level - 1);
+      		$child_node->parent = $parent[$parent_level] ? $parent[$parent_level] : $node->nid;
 
-      // Find the parent id for this node using the value stored for the
-      // next higher level.
-      $parent_level = intval($level - 1);
-      $child_node->parent = $parent[$parent_level] ? $parent[$parent_level] : $node->nid;
+     		//$child_node->book['bid']  = $parent[0]; // This was wrong ... why?
+			$child_node->book['bid'] = $node->book['bid']; 
+      		$child_node->book['plid'] = $bookml[$parent_level];
 
-      $child_node->book['bid']  = $parent[0];
-      $child_node->book['plid'] = $bookml[$parent_level];
+      		// Make sure shanti_texts_splitter is not run again on the child nodes.
+      		$child_node->shanti_texts_splitter = 0;
+      		$child_node->is_new = TRUE;
+      		
+      		node_save($child_node);
+			
+      		// Set a parent nid and bookml mlid for this level that can be
+      		// used by later children.
+      		$parent[$level] = $child_node->nid;
+      		$bookml[$level] = $child_node->book['mlid'];
 
-      // Make sure shanti_texts_splitter is not run again on the child nodes.
-      $child_node->shanti_texts_splitter = 0;
-      $child_node->is_new = TRUE;
-      node_save($child_node);
+      		$prev_level = $level;
+      		$pageno++;
+    	} // end foreach page
+  	}// end if 
 
-      // Set a parent nid and bookml mlid for this level that can be
-      // used by later children.
-      $parent[$level] = $child_node->nid;
-      $bookml[$level] = $child_node->book['mlid'];
+  	// Reset max_execution_time
+  	ini_set('max_execution_time', $original_time);
 
-      $prev_level = $level;
-      $pageno++;
-    } // foreach page
-  }// if 
-
-  // Reset max_execution_time
-  ini_set('max_execution_time', $original_time);
-
-  if ($pageno > 1) {
-    drupal_set_message(t('Text content field was expanded into !pageno pages by SHANTI Texts Splitter module.', array('!pageno' => $pageno)));
-  }
+  	if ($pageno > 1) 
+  	{
+    	drupal_set_message(t('Text content field was expanded into !pageno pages by SHANTI Texts Splitter module.', array('!pageno' => $pageno)));
+  	}
 }
